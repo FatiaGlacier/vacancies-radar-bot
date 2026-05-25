@@ -14,29 +14,27 @@ START, UNREGISTERED, REGISTRATION, LANGUAGES, TECHNOLOGIES, LEVEL, WORK_FORMAT, 
 unregistered_reply_keyboard = [
     ["Register"],
 ]
-unregisterd_markup = ReplyKeyboardMarkup(unregistered_reply_keyboard, one_time_keyboard=True)
+unregisterd_markup = ReplyKeyboardMarkup(unregistered_reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
 
 menu_reply_keyboard = [
-    ["Jobs"],
-    ["Profile"],
-    ["Saved"],
+    ["Jobs", "Profile", "Saved"],
 ]
-menu_markup = ReplyKeyboardMarkup(menu_reply_keyboard, one_time_keyboard=False)
+menu_markup = ReplyKeyboardMarkup(menu_reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
 
 jobs_reply_keyboard = [
     ["Menu"],
 ]
-jobs_reply_markup = ReplyKeyboardMarkup(jobs_reply_keyboard, one_time_keyboard=False)
+jobs_reply_markup = ReplyKeyboardMarkup(jobs_reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
 
 profile_reply_keyboard = [
     ["Menu"],
 ]
-profile_reply_markup = ReplyKeyboardMarkup(profile_reply_keyboard, one_time_keyboard=False)
+profile_reply_markup = ReplyKeyboardMarkup(profile_reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
 
 saved_reply_keyboard = [
     ["Menu"],
 ]
-saved_reply_markup = ReplyKeyboardMarkup(saved_reply_keyboard, one_time_keyboard=False)
+saved_reply_markup = ReplyKeyboardMarkup(saved_reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
 
 async def post_init(application):
     print("Creating tables...")
@@ -144,4 +142,4 @@ if __name__ == '__main__':
     app.add_handler(conv_handler)
 
     print("Starting bot...")
-    app.run_polling(poll_interval=3)
+    app.run_polling(poll_interval=1)
