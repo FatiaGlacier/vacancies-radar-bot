@@ -103,8 +103,44 @@ async def saved_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return SAVED
 
-async def unregistered(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    return
+async def registration_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        f"Okay, tell me..."
+    )
+
+    show_languages()
+    
+    return LANGUAGES
+
+async def show_languages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    lang_keyboard = [
+        [
+            InlineKeyboardButton("English", callback_data="lang_english"),
+            InlineKeyboardButton("German", callback_data="lang_german")
+        ],
+        [
+            InlineKeyboardButton("Spanish", callback_data="lang_spanish"),
+            InlineKeyboardButton("French", callback_data="lang_french")
+        ],
+    ]
+
+    await update.message.reply_text(
+        "Choose languages you speak:",
+        reply_markup=InlineKeyboardMarkup(lang_keyboard)
+    )
+
+async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    jobs_reply_keyboard = [
+        ["Menu"],
+    ]
+    jobs_reply_markup = ReplyKeyboardMarkup(jobs_reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+    await update.message.reply_text(
+        f"Which languages do you speak?",
+
+    )
+    return TECHNOLOGIES
 
 async def fall(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -122,6 +158,10 @@ if __name__ == '__main__':
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
+            REGISTRATION: [
+                MessageHandler(filters.Regex("^Register$", ))
+            ],
+
             MENU: [
                 MessageHandler(filters.Regex("^Jobs$"), jobs_menu),
                 MessageHandler(filters.Regex("^Profile$"), profile_menu),
