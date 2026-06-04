@@ -3,6 +3,5 @@ venv
 media
 mock_data
 __pycache__/
-docker-compose.yaml
 .vscode
 
