@@ -3,13 +3,43 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKe
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, ConversationHandler
 from api.remotive import get_jobs_number
 from config import get_bot_token, get_rapidapi_token
-from db.engine import AsyncSessionLocal, create_tables
-from db.repositories.user_repository import create_user, get_user
-from db.models import user
 import asyncio
 import sys
+import numpy as np
 
-START, UNREGISTERED, REGISTRATION, LANGUAGES, TECHNOLOGIES, LEVEL, WORK_FORMAT, NOTICING, MENU, JOBS, PROFILE, SAVED= range(12)
+START, UNREGISTERED, REGISTRATION, LANGUAGES, TECHNOLOGIES, LEVEL, WORK_FORMAT, NOTICING, MENU, JOBS, PROFILE, SAVED = range(12)
+
+class States:
+    START = 1
+    UNREGISTERED = 2
+    REGISTRATION = 3
+    LANGUAGES = 4
+    TECHNOLOGIES = 5
+    LEVEL = 6
+    WORK_FORMAT = 7
+    NOTICING = 8
+    MENU = 9
+    JOBS = 10
+    PROFILE = 11
+    SAVED = 12
+
+languages_dict = {
+    "EN" : "English",
+    "DE" : "German",
+    "FR" : "French",
+    "ES" : "Spanish",
+    "IT" : "Italian",
+    "NL" : "Dutch",
+    "PL" : "Polish",
+    "SV" : "Swedish",
+    "DA" : "Danish",
+    "NO" : "Norwegian",
+    "FI" : "Finnish",
+    "CS" : "Czech",
+    "RO" : "Romanian",
+    "HU" : "Hungarian",
+    "UK" : "Ukrainian",
+}
 
 unregistered_reply_keyboard = [
     ["Register"],
@@ -36,10 +66,10 @@ saved_reply_keyboard = [
 ]
 saved_reply_markup = ReplyKeyboardMarkup(saved_reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
 
-async def post_init(application):
-    print("Creating tables...")
-    await create_tables()
-    print("Tables created!")
+# async def post_init(application):
+#     print("Creating tables...")
+#     await create_tables()
+#     print("Tables created!")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_name = update.message.from_user.first_name
@@ -54,26 +84,117 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
 
-        user = None
-
-        async with AsyncSessionLocal() as session:
-            user = await get_user(
-                session,
-                telegram_id=update.message.from_user.id
-                )
+        registration_test = True
             
-            if user is None:
-                await update.message.reply_text(
-                    f"You are NEW user! For registration click registration button",
-                    reply_markup=unregisterd_markup
-                ) 
-                return REGISTRATION
-            else:
-                await update.message.reply_text(
-                    f"Welcome back! Menu is bellow",
-                    reply_markup=menu_markup
-                )
-                return MENU
+        if registration_test is True:
+            await update.message.reply_text(
+                f"You are NEW user! For registration click registration button",
+                reply_markup=unregisterd_markup
+            ) 
+            return REGISTRATION
+        else:
+            await update.message.reply_text(
+                f"Welcome back! Menu is bellow",
+                reply_markup=menu_markup
+            )
+            return MENU
+            
+        # async with AsyncSessionLocal() as session:
+        #     user = await get_user(
+        #         session,
+        #         telegram_id=update.message.from_user.id
+        #         )
+            
+        #     if user is None:
+        #         await update.message.reply_text(
+        #             f"You are NEW user! For registration click registration button",
+        #             reply_markup=unregisterd_markup
+        #         ) 
+        #         return REGISTRATION
+        #     else:
+        #         await update.message.reply_text(
+        #             f"Welcome back! Menu is bellow",
+        #             reply_markup=menu_markup
+        #         )
+        #         return MENU
+
+async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await languages_menu(update, context)
+    return LANGUAGES
+
+def build_languages_keyboard(selected: list) -> InlineKeyboardMarkup:
+    keyboard = []
+    line = []
+    for key, label in languages_dict.items():
+        text = f"✅ {label}" if key in selected else label
+        line.append(InlineKeyboardButton(text, callback_data=f"lang_{key}"))
+        if len(line) == 3:
+            keyboard.append(line)
+            line = []
+            continue
+
+    if line:
+        keyboard.append(line)
+
+    keyboard.append(
+        [InlineKeyboardButton("Continue >", callback_data="next")]
+    )
+    return InlineKeyboardMarkup(keyboard)
+
+# async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     markup = build_languages_keyboard([])
+
+#     await update.message.reply_text(
+#         f"Choose languages:",
+#         reply_markup=markup
+#     )
+#     return LANGUAGES
+
+async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    markup = build_languages_keyboard([])
+
+    # Safely extract the target chat ID from whatever type of update came in
+    if update.message:
+        chat_id = update.message.chat_id
+    else:
+        chat_id = update.callback_query.message.chat_id
+
+    # Use the global bot context instead of relying on message targets
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="Choose languages:",
+        reply_markup=markup
+    )
+    return LANGUAGES
+
+async def handle_languages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    if data == "next":
+        selected = context.user_data.get("languages", [])
+
+        await query.edit_message_text(
+            f"You chose: {', '.join(selected)}"
+        )
+        # TODO test and remove
+        context.user_data["languages"] = []
+        await languages_menu(update, context)
+        return LANGUAGES
+
+    language = data.replace("lang_", "")
+    selected = context.user_data.get("languages", [])
+    if language in selected:
+        selected.remove(language)
+    else:
+        selected.append(language)
+
+    context.user_data["languages"] = selected
+    new_markup = build_languages_keyboard(selected)
+
+    await query.edit_message_reply_markup(reply_markup=new_markup)
+    return LANGUAGES
 
 async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -103,64 +224,38 @@ async def saved_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return SAVED
 
-async def registration_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        f"Okay, tell me..."
-    )
-
-    show_languages()
-    
-    return LANGUAGES
-
-async def show_languages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang_keyboard = [
-        [
-            InlineKeyboardButton("English", callback_data="lang_english"),
-            InlineKeyboardButton("German", callback_data="lang_german")
-        ],
-        [
-            InlineKeyboardButton("Spanish", callback_data="lang_spanish"),
-            InlineKeyboardButton("French", callback_data="lang_french")
-        ],
-    ]
-
-    await update.message.reply_text(
-        "Choose languages you speak:",
-        reply_markup=InlineKeyboardMarkup(lang_keyboard)
-    )
-
-async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    jobs_reply_keyboard = [
-        ["Menu"],
-    ]
-    jobs_reply_markup = ReplyKeyboardMarkup(jobs_reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-
-    await update.message.reply_text(
-        f"Which languages do you speak?",
-
-    )
-    return TECHNOLOGIES
-
 async def fall(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
                     f"Something went wrong"
                 )
     start()
 
+REG_DEV = True
+
 if __name__ == '__main__':
     if sys.platform == "win32":
         import asyncio
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    app = Application.builder().token(get_bot_token()).post_init(post_init).build()
+    app = Application.builder().token(get_bot_token()).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
             REGISTRATION: [
-                MessageHandler(filters.Regex("^Register$", ))
+                MessageHandler(filters.Regex("^Register$"), register)
             ],
+            LANGUAGES: [
+                CallbackQueryHandler(
+                    handle_languages,
+                    pattern="^lang_.*"
+                ),
+                CallbackQueryHandler(
+                    handle_languages,
+                    pattern="^next$"
+                ),
+            ],
+            # lang - exp - tech - format - (location) - update freq.
 
             MENU: [
                 MessageHandler(filters.Regex("^Jobs$"), jobs_menu),

@@ -1,10 +1,11 @@
-from sqlalchemy import BigInteger, String, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
-from db.base import Base
+from pydantic import BaseModel
+from typing import Optional
 
-class User(Base):
-    __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    
+class User(BaseModel):
+    user_id: int
+    telegram_id: int
+    languages: list[str] = []
+    key_words: list[str] = []
+    experience: list[str] = []
+    job_types: list[str] = []
+    locations: list[str] = []
