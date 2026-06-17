@@ -1,5 +1,5 @@
 from pathlib import Path
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, ConversationHandler
 from api.remotive import get_jobs_number
 from config import get_bot_token, get_rapidapi_token
@@ -119,6 +119,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         #         return MENU
 
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        f"Let's start...",
+        reply_markup=ReplyKeyboardRemove()
+    )
     await languages_menu(update, context)
     return LANGUAGES
 
@@ -153,13 +157,11 @@ def build_languages_keyboard(selected: list) -> InlineKeyboardMarkup:
 async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = build_languages_keyboard([])
 
-    # Safely extract the target chat ID from whatever type of update came in
     if update.message:
         chat_id = update.message.chat_id
     else:
         chat_id = update.callback_query.message.chat_id
 
-    # Use the global bot context instead of relying on message targets
     await context.bot.send_message(
         chat_id=chat_id,
         text="Choose languages:",
