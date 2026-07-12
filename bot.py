@@ -126,6 +126,10 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await languages_menu(update, context)
     return LANGUAGES
 
+
+# LANGUAGES ---------------------------------------------------------------------------------
+
+
 def build_languages_keyboard(selected: list) -> InlineKeyboardMarkup:
     keyboard = []
     line = []
@@ -144,15 +148,6 @@ def build_languages_keyboard(selected: list) -> InlineKeyboardMarkup:
         [InlineKeyboardButton("Continue >", callback_data="next")]
     )
     return InlineKeyboardMarkup(keyboard)
-
-# async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     markup = build_languages_keyboard([])
-
-#     await update.message.reply_text(
-#         f"Choose languages:",
-#         reply_markup=markup
-#     )
-#     return LANGUAGES
 
 async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = build_languages_keyboard([])
@@ -175,28 +170,123 @@ async def handle_languages(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data
     if data == "next":
-        selected = context.user_data.get("languages", [])
+        selected = context.user_data.get("lang_selected", [])
 
         await query.edit_message_text(
             f"You chose: {', '.join(selected)}"
         )
         # TODO test and remove
-        context.user_data["languages"] = []
-        await languages_menu(update, context)
-        return LANGUAGES
+        # context.user_data["languages"] = []
+        await technologies_menu(update, context)
+        return TECHNOLOGIES
 
     language = data.replace("lang_", "")
-    selected = context.user_data.get("languages", [])
+    selected = context.user_data.get("lang_selected", [])
     if language in selected:
         selected.remove(language)
     else:
         selected.append(language)
 
-    context.user_data["languages"] = selected
+    context.user_data["lang_selected"] = selected
     new_markup = build_languages_keyboard(selected)
 
     await query.edit_message_reply_markup(reply_markup=new_markup)
     return LANGUAGES
+
+
+# TECHNOLOGIES ---------------------------------------------------------------------------------
+
+
+INITIAL = ["Python", "Java", "JavaScript", "Spring", "Docker", "PostgreSQL", "React", "Node.js"]
+NEXT    = ["Kubernetes", "FastAPI", "NestJS", "Redis", "TypeScript", "AWS", "Django", "MongoDB"]
+
+def build_technologies_keyboard(shown: list[str], selected: list[str]) -> InlineKeyboardMarkup:
+    keyboard = []
+    line = []
+    for label in shown:
+        text = f"✅ {label}" if label in selected else label
+        line.append(InlineKeyboardButton(text, callback_data=f"tech_{label}"))
+        if len(line) == 3:
+            keyboard.append(line)
+            line = []
+            continue
+
+    if line:
+        keyboard.append(line)
+
+    keyboard.append(
+        [InlineKeyboardButton("More", callback_data="more")]
+    )
+    keyboard.append(
+        [InlineKeyboardButton("Continue >", callback_data="next")]
+    )
+    return InlineKeyboardMarkup(keyboard)
+
+async def handle_technologies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data =query.data
+
+    selected: list = context.user_data.get("tech_selected", [])
+    shown: list = context.user_data.get("tech_shown", [])
+
+    if data == "next":
+        selected = context.user_data.get("tech_selected", [])
+
+        await query.edit_message_text(
+            f"You chose: {', '.join(selected)}"
+        )
+        # TODO test and remove
+        context.user_data["tech_selected"] = []
+        context.user_data["tech_shown"] = []
+        context.user_data["next_loaded"] = False
+        await technologies_menu(update, context)
+        return TECHNOLOGIES
+    
+    if data == "more":
+        # DEMO. THEN GPT Requests
+        if not context.user_data.get("next_loaded"):
+            new_shown = selected + [t for t in NEXT if t not in selected]
+            context.user_data["tech_shown"] = new_shown
+            context.user_data["next_loaded"] = True
+        await query.edit_message_reply_markup(
+            reply_markup=build_technologies_keyboard(new_shown, selected)
+        )
+        return TECHNOLOGIES
+    
+    tech = data.replace("tech_", "")
+    if tech in selected:
+        selected.remove(tech)
+    else:
+        selected.append(tech)
+        
+    context.user_data["tech_selected"] = selected
+    await query.edit_message_reply_markup(
+            reply_markup=build_technologies_keyboard(shown, selected)
+        )
+    return TECHNOLOGIES
+
+
+async def technologies_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    context.user_data["tech_selected"] = []
+    context.user_data["tech_shown"] = INITIAL.copy()
+    context.user_data["next_loaded"] = False
+
+    markup = build_technologies_keyboard(INITIAL, [])
+
+    if update.message:
+        chat_id = update.message.chat_id
+    else:
+        chat_id = update.callback_query.message.chat_id
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="Choose technologies:",
+        reply_markup=markup
+    )
+    return TECHNOLOGIES
+
 
 async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -257,7 +347,21 @@ if __name__ == '__main__':
                     pattern="^next$"
                 ),
             ],
-            # lang - exp - tech - format - (location) - update freq.
+            TECHNOLOGIES: [
+                CallbackQueryHandler(
+                    handle_technologies,
+                    pattern="^tech_.*"
+                ),
+                CallbackQueryHandler(
+                    handle_technologies,
+                    pattern="^next$"
+                ),
+                CallbackQueryHandler(
+                    handle_technologies,
+                    pattern="^more$"
+                ),
+            ],
+            # lang - tech - exp - format - (location) - update freq.
 
             MENU: [
                 MessageHandler(filters.Regex("^Jobs$"), jobs_menu),
